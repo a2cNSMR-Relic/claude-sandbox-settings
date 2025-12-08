@@ -1,2 +1,5 @@
 .idea
 .vscode
+.mcp.json
+.env.local
+.env
