@@ -6,12 +6,19 @@
 
 | ファイル | 説明 |
 |----------|------|
-| `.claude/settings.json` | サンドボックスとフックの設定 |
+| `.claude/settings.json` | サンドボックスとフックの設定（標準版） |
+| `.claude/settings.json.strict` | より厳格なパーミッション設定（厳格版） |
 | `CLAUDE.md` | Claude Code への指示（プロンプト） |
 
-## sandbox オプション
+使用する設定を `.claude/settings.json` として配置してください。
 
-`.claude/settings.json` で設定します。
+---
+
+## settings.json（標準版）
+
+Git リモート操作を許可するシンプルな設定です。
+
+### sandbox オプション
 
 | オプション | 値 | 説明 |
 |-----------|-----|------|
@@ -19,9 +26,38 @@
 | `autoAllowBashIfSandboxed` | `false` | サンドボックス有効時でも、Bashコマンド実行前にユーザー確認を求めます。`true` にすると確認なしで自動実行されます。 |
 | `allowUnsandboxedCommands` | `true` | サンドボックス外でのコマンド実行を許可します。Git リモート操作など、ネットワークアクセスが必要なコマンドに必要です。 |
 
-## permissions オプション
+### 設定例
 
-### allow（許可されたパーミッション）
+```json
+{
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": false,
+    "allowUnsandboxedCommands": true
+  },
+  "hooks": {
+    "PreToolUse": [...]
+  }
+}
+```
+
+---
+
+## settings.json.strict（厳格版）
+
+パーミッションを明示的に制御する厳格な設定です。サンドボックス外でのコマンド実行を禁止します。
+
+### sandbox オプション
+
+| オプション | 値 | 説明 |
+|-----------|-----|------|
+| `enabled` | `true` | サンドボックスモードを有効化 |
+| `autoAllowBashIfSandboxed` | `false` | Bashコマンド実行前にユーザー確認を求める |
+| `allowUnsandboxedCommands` | `false` | サンドボックス外でのコマンド実行を**禁止** |
+
+### permissions オプション
+
+#### allow（許可されたパーミッション）
 
 | パーミッション | 説明 |
 |---------------|------|
@@ -32,7 +68,7 @@
 | `Write(/tmp/claude/**)` | `/tmp/claude/` 配下へのファイル書き込みを許可（一時ファイル用） |
 | `Read(~/.gitconfig)` | Git のグローバル設定ファイルの読み取りを許可（コミット時のユーザー情報参照用） |
 
-### deny（拒否されたパーミッション）
+#### deny（拒否されたパーミッション）
 
 | パーミッション | 説明 |
 |---------------|------|
@@ -44,6 +80,13 @@
 | `Write(~/**)` | ホームディレクトリ配下への書き込みを拒否 |
 | `Write(../)`, `Write(../**)` | 親ディレクトリへの書き込みを拒否 |
 | `Write(.claude/settings.local.json)` | ローカル設定ファイルへの書き込みを拒否 |
+
+### 注意事項
+
+- `allowUnsandboxedCommands: false` のため、Git リモート操作（push/pull/fetch/clone）は失敗します
+- Git リモート操作が必要な場合は、標準版（`settings.json`）を使用してください
+
+---
 
 ## セキュリティ上の目的
 
