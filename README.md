@@ -4,15 +4,20 @@
 
 ## 設定ファイル
 
-`.claude/settings.json` に以下の設定を記述しています。
+| ファイル | 説明 |
+|----------|------|
+| `.claude/settings.json` | サンドボックスとフックの設定 |
+| `CLAUDE.md` | Claude Code への指示（プロンプト） |
 
 ## sandbox オプション
+
+`.claude/settings.json` で設定します。
 
 | オプション | 値 | 説明 |
 |-----------|-----|------|
 | `enabled` | `true` | サンドボックスモードを有効化。Bashコマンドの実行がサンドボックス内に制限され、ファイルシステムへのアクセスが制御されます。 |
 | `autoAllowBashIfSandboxed` | `false` | サンドボックス有効時でも、Bashコマンド実行前にユーザー確認を求めます。`true` にすると確認なしで自動実行されます。 |
-| `allowUnsandboxedCommands` | `false` | サンドボックス外でのコマンド実行を禁止します。`true` にするとサンドボックスを無効化したコマンド実行が許可されます。 |
+| `allowUnsandboxedCommands` | `true` | サンドボックス外でのコマンド実行を許可します。Git リモート操作など、ネットワークアクセスが必要なコマンドに必要です。 |
 
 ## permissions オプション
 
@@ -267,6 +272,67 @@ sensitive_patterns=(
 - **サンドボックスモードでは一時ファイルの作成が制限されるため、HEREDOC を使った複数行のコミットメッセージが使用できません**。シンプルな `-m` オプションでコミットしてください
 
 ## 既知の制限事項
+
+### Git リモート操作（push / pull / fetch / clone）
+
+サンドボックスモードでは**ネットワーク（DNS解決）が制限される**ため、リモートリポジトリへの接続が必要な Git コマンドは失敗します。
+
+#### 症状
+
+```bash
+$ git push
+ssh: Could not resolve hostname github.com: -65563
+fatal: Could not read from remote repository.
+```
+
+#### 影響を受けるコマンド
+
+| コマンド | サンドボックス内 | サンドボックス解除 |
+|----------|-----------------|-------------------|
+| `git push` | 失敗 | 成功 |
+| `git pull` | 失敗 | 成功 |
+| `git fetch` | 失敗 | 成功 |
+| `git clone` | 失敗 | 成功 |
+| `git status` | 成功 | - |
+| `git commit` | 成功 | - |
+| `git log` | 成功 | - |
+
+#### 対応方法
+
+`CLAUDE.md` に以下を記述することで、Claude Code がリモート操作時に自動でサンドボックスを解除します：
+
+```markdown
+# Git リモート操作
+
+git push, git pull, git fetch, git clone などリモートリポジトリへの接続が必要なコマンドは、
+サンドボックスモードではDNS解決ができないため、`dangerouslyDisableSandbox: true` で実行すること。
+```
+
+この指示がない場合、Claude Code は：
+1. サンドボックス内で実行を試みる
+2. DNS解決エラーで失敗
+3. サンドボックス解除を提案
+
+という流れになり、**余分なトークンが消費されます**。
+
+#### 設定要件
+
+`.claude/settings.json` で `allowUnsandboxedCommands` を `true` に設定する必要があります：
+
+```json
+{
+  "sandbox": {
+    "enabled": true,
+    "allowUnsandboxedCommands": true
+  }
+}
+```
+
+#### 補足：サンドボックス解除の動作
+
+- `dangerouslyDisableSandbox: true` は**そのコマンドのみ**に適用
+- 次のコマンドは自動的にサンドボックスモードに戻る
+- 明示的に「戻す」操作は不要
 
 ### Git リモートリポジトリの追加
 

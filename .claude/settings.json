@@ -2,7 +2,7 @@
   "sandbox": {
     "enabled": true,
     "autoAllowBashIfSandboxed": false,
-    "allowUnsandboxedCommands": false
+    "allowUnsandboxedCommands": true
   },
   "hooks": {
     "PreToolUse": [
