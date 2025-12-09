@@ -4,27 +4,17 @@
     "autoAllowBashIfSandboxed": false,
     "allowUnsandboxedCommands": false
   },
-  "permissions": {
-    "allow": [
-      "Read(./**)",
-      "Edit(./**)",
-      "Write(./**)",
-      "Edit(/tmp/claude/**)",
-      "Write(/tmp/claude/**)",
-      "Read(~/.gitconfig)"
-    ],
-    "deny": [
-      "Read(~/**)",
-      "Read(../)",
-      "Read(../**)",
-      "Edit(~/**)",
-      "Edit(../)",
-      "Edit(../**)",
-      "Edit(.claude/settings.local.json)",
-      "Write(~/**)",
-      "Write(../)",
-      "Write(../**)",
-      "Write(.claude/settings.local.json)"
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Read|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/check-sensitive-paths.sh"
+          }
+        ]
+      }
     ]
   }
 }

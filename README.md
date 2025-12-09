@@ -168,3 +168,98 @@ GitHub CLI（`gh`）がインストールされている環境で GitHub MCP サ
 サンドボックスモードでプロジェクトフォルダ外へのアクセスが制限されている場合、**GitHub MCP サーバーの方が制約なく動作します**。MCP サーバーはサンドボックスの制限を受けないため、日常的な GitHub 操作のほとんどをカバーできます。
 
 ただし、`gh` を完全にアンインストールする必要はありません。MCP サーバーでカバーできない操作が必要になった場合のバックアップとして残しておくのが実用的です。
+
+## PreToolUse フック
+
+### 概要
+
+PreToolUse フックは、Claude Code がツール（Bash、Read、Write、Edit）を実行する**直前**に呼び出されるカスタムスクリプトです。これにより、機密ファイルへのアクセスをブロックできます。
+
+### なぜフックが必要か
+
+サンドボックスモードでは**書き込み**は制限されますが、**読み込み**は制限されません。また、`permissions.deny` 設定には複数のバグが報告されており、確実に動作しない可能性があります。
+
+#### 関連する既知の問題（GitHub Issues）
+
+| Issue | 概要 |
+|-------|------|
+| [#6699](https://github.com/anthropics/claude-code/issues/6699) | **Critical Security Bug**: `settings.json` の `deny` パーミッション設定が完全に機能しない |
+| [#6631](https://github.com/anthropics/claude-code/issues/6631) | Read/Write ツールに対して `deny` 設定が適用されない |
+| [#4467](https://github.com/anthropics/claude-code/issues/4467) | `.env` ファイルや `secrets/` ディレクトリへのアクセスをブロックできない |
+
+これらの issue では、**PreToolUse フックを回避策として使用する**ことが提案されています。
+
+PreToolUse フックはこれらの問題を回避し、機密ファイルへのアクセスを確実にブロックします。
+
+### 設定ファイル
+
+#### `.claude/settings.json`
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Read|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/check-sensitive-paths.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+#### `.claude/hooks/check-sensitive-paths.sh`
+
+機密パスへのアクセスをブロックするスクリプトです。
+
+### ブロック対象のパターン
+
+デフォルトで以下のパターンがブロックされます：
+
+| パターン | 説明 |
+|----------|------|
+| `.ssh` | SSH 秘密鍵・設定ファイル |
+| `.aws` | AWS 認証情報 |
+| `.gnupg` | GPG 鍵 |
+| `.env` | 環境変数ファイル |
+| `credentials` | 認証情報ファイル全般 |
+| `secrets` | シークレットファイル全般 |
+
+### パターンの追加方法
+
+`.claude/hooks/check-sensitive-paths.sh` 内の `sensitive_patterns` 配列に追加します：
+
+```bash
+sensitive_patterns=(
+  ".ssh"
+  ".aws"
+  ".gnupg"
+  ".env"
+  "credentials"
+  "secrets"
+  # 以下を追加
+  ".kube"           # Kubernetes設定
+  ".docker"         # Docker認証情報
+  ".npmrc"          # npm認証トークン
+  "password"        # パスワード関連
+)
+```
+
+### フックの動作
+
+1. Claude Code がツールを実行しようとする
+2. フックスクリプトがツール情報（JSON）を受け取る
+3. 対象パスが機密パターンに一致するかチェック
+4. 一致した場合: `{"decision": "block", "reason": "..."}` を返してブロック
+5. 一致しない場合: ツール実行を許可
+
+### 注意事項
+
+- フックの変更後は Claude Code の再起動が必要です
+- `jq` コマンドが必要です（JSON パース用）
+- フックスクリプトには実行権限が必要です（`chmod +x`）
