@@ -1,0 +1,30 @@
+{
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": false,
+    "allowUnsandboxedCommands": false
+  },
+  "permissions": {
+    "allow": [
+      "Read(./**)",
+      "Edit(./**)",
+      "Write(./**)",
+      "Edit(/tmp/claude/**)",
+      "Write(/tmp/claude/**)",
+      "Read(~/.gitconfig)"
+    ],
+    "deny": [
+      "Read(~/**)",
+      "Read(../)",
+      "Read(../**)",
+      "Edit(~/**)",
+      "Edit(../)",
+      "Edit(../**)",
+      "Edit(.claude/settings.local.json)",
+      "Write(~/**)",
+      "Write(../)",
+      "Write(../**)",
+      "Write(.claude/settings.local.json)"
+    ]
+  }
+}
